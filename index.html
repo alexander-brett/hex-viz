@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hex</title>
+    <script src="d3.v4.min.js"></script>
+    <script src="sql.js" ></script>
+  </head>
+  <body>
+    <div id="hex"></div>
+    <script>
+      var sideLength = 18;
+      var gridSpacing = 15;
+
+      var grid = function(){
+        this.cells = [{x:gridSpacing*sideLength, y:gridSpacing*sideLength}];
+        for (var r = 1; r < sideLength; r++){
+          for (var t = 0; t < 6; t++){
+            for (var k = 0; k < r; k++){
+              cells.push({
+                x: gridSpacing*(sideLength + r*Math.cos(t*Math.PI/3) + k * Math.cos((t-2)*Math.PI/3)),
+                y: gridSpacing*(sideLength + r*Math.sin(t*Math.PI/3) + k * Math.sin((t-2)*Math.PI/3))
+              });
+            }
+          }
+        };
+        this.sqdist = function(a, b) {
+          return Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
+        },
+        this.clearOccupation = function() {
+          this.cells.forEach(function(e){e.occupied = false});
+        }
+        this.occupyNearest = function(p) {
+          var minDist = 1000000;
+          var d;
+          var candidate = null;
+          for(var i = 0; i < this.cells.length; i++) {
+            if(!this.cells[i].occupied && ( d = this.sqdist(p, this.cells[i])) < minDist) {
+              minDist = d;
+              candidate = this.cells[i];
+            }
+          }
+          if (candidate) candidate.occupied = true;
+          return candidate;
+        }
+        return this;
+      }();
+      var svg = d3.select('#hex')
+        .append('svg')
+        .attr('width', 2* gridSpacing*sideLength)
+        .attr('height', 2* gridSpacing*sideLength);
+      svg.selectAll(".point")
+        .data(grid.cells)
+        .enter()
+        .append('circle')
+        .attr('cx', function(d){return d.x})
+        .attr('cy', function(d){return d.y})
+        .attr('r', 2)
+        .style('fill', 'grey');
+
+      function updateFakes(fakeNodes){
+        grid.clearOccupation();
+        fakeNodes.attr('transform', function(d){
+          var nearest = grid.occupyNearest(d);
+          d.fakeLocation = nearest;
+          return 'translate('+nearest.x+','+nearest.y+') scale('+gridSpacing/2+') rotate(30) ';
+        });
+        svg.selectAll('.link')
+      }
+
+      function updateFakeLinks(links){
+        links
+          .attr('x1', function(d){return d.x})
+          .attr('y1', function(d){return d.y})
+          .attr('x2', function(d){return d.fakeLocation.x})
+          .attr('y2', function(d){return d.fakeLocation.y});
+      }
+
+      function updateRealLinks(links){
+        links
+          .attr('x1', function(d){return d.source.x})
+          .attr('y1', function(d){return d.source.y})
+          .attr('x2', function(d){return d.target.x})
+          .attr('y2', function(d){return d.target.y});
+      }
+
+      function forceHex(strength) {
+        var _nodes = []
+        var result = function(alpha){
+          for (var i = 0, n = _nodes.length, node, k = alpha * strength; i < n; ++i) {
+            node = _nodes[i];
+            node.vx -= node.fakeLocation.x * k;
+            node.vy -= node.fakeLocation.y * k;
+          }
+        }
+        result.initialise = function(nodes){
+          _nodes = nodes;
+        }
+      }
+
+      function startForce(data, db){
+        var actualNodes = svg.selectAll('.realNode').data(data)
+          .enter().append('circle')
+          .attr('r', 2)
+          .attr('cx', function(d){return isNaN(d.x) ? 0 : d.x })
+          .attr('cy', function(d){return isNaN(d.y) ? 0 : d.y })
+          .style('fill', 'red');
+        var fakeNodes = svg.selectAll('.fakeNode').data(data)
+          .enter().append('polygon')
+          .attr('points', '1,0 0.5,0.866 -0.5,0.866 -1,0 -0.5,-0.866 0.5,-0.866')
+          .style('fill', 'rgba(0,0,0,0.2)');
+        updateFakes(fakeNodes);
+        var fakeLinks = svg.selectAll('.fakelink').data(data)
+          .enter().append('line').attr('class', 'fakelink')
+          .style('stroke', 'black')
+          .style('stroke-width', '1.5');
+        updateFakeLinks(fakeLinks);
+
+        /*var realLinks = d3.voronoi()
+          .x(function(d){return d.x})
+            .y(function(d){return d.y})(data)
+          .links();
+        var realLinkLines = svg.selectAll('.reallink').data(realLinks)
+          .enter().append('line').attr('class', 'reallink')
+          .style('stroke', 'red')
+          .style('stroke-width', '1.5');
+          updateRealLinks(realLinkLines);*/
+
+        /*var force = d3.forceSimulation(data)
+          .force("links",d3.forceLink(realLinks)
+            .distance(2*gridSpacing)
+            .strength(0.1)
+            .iterations(2)
+          )
+          .force("hex", forceHex(0.02))
+          .force("centerX", d3.forceX(gridSpacing*sideLength).strength(0.02))
+          .force("centerY", d3.forceY(gridSpacing*sideLength).strength(0.02))
+          .force("charge", d3.forceManyBody().strength(function(d){
+              return - Math.max((grid.sqdist(d.fakeLocation, d) - gridSpacing), 0) / (10*gridSpacing*gridSpacing)
+          }))
+          .force("spacing", d3.forceCollide(gridSpacing/2))
+          .force("geoX", d3.forceX(function(d){return d.desiredLocation[0]}))
+          .force("geoY", d3.forceY(function(d){return d.desiredLocation[1]}));
+        force.on('tick', function(){
+          actualNodes
+            .attr('cx', function(d){return isNaN(d.x) ? 0 : d.x })
+            .attr('cy', function(d){return isNaN(d.y) ? 0 : d.y });
+          updateFakes(fakeNodes);
+          updateFakeLinks(fakeLinks);
+          //updateRealLinks(realLinkLines);
+        });*/
+      };
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'data.db', true);
+      xhr.responseType = 'arraybuffer';
+      xhr.onload = function(e) {
+        var uInt8Array = new Uint8Array(this.response);
+        var db = new SQL.Database(uInt8Array);
+        var statement = db.prepare(
+          "SELECT * from boroughs " +
+          "JOIN locations ON boroughs.id = locations.id " +
+          "ORDER BY boroughs.id ASC "
+           //+ "LIMIT 50"
+        );
+        var projection = d3.geoMercator()
+          .scale(sideLength*gridSpacing*150)
+          .center([-0.1, 51.5085300])
+          .translate([gridSpacing*sideLength,gridSpacing*sideLength]);
+        var data = [];
+        while(statement.step()){
+          var result = statement.getAsObject();
+          result.desiredLocation = projection([result.long, result.lat]);
+          result.x = result.desiredLocation[0];
+          result.y = result.desiredLocation[1];
+          data.push(result);
+        }
+        startForce(data, db);
+      };
+      xhr.send();
+    </script>
+  </body>
+</html>
