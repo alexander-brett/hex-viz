@@ -90,7 +90,7 @@ var grid = function(){
       Math.abs(dtheta),
       Math.abs(dtheta - 2*Math.PI));
     if (effectivedtheta > Math.PI/2) return 999999;
-    return Math.pow(dr, 1)*Math.pow(effectivedtheta,1.5)*sqdist(a,b);
+    return Math.pow(dr, 1)*Math.pow(effectivedtheta, 0.6)*Math.pow(sqdist(a,b)/origin.x,0.7);//*Math.pow(sqdist(origin,a)/origin.x, 0.6);
   };
   var boundary = new Set();
   boundary.add(0);
@@ -143,7 +143,7 @@ function startForce(data, db){
 
     var colourGenerator = options.Colours["Borough"](db);
     fakeNodes.style('fill', function(d,i){
-      return generator.colour(i);
+      return colourGenerator.colour(d);
     });
 };
 

@@ -71,12 +71,18 @@ function Options(database){
       return function(db){
         var boroughQuery = db.exec(
           "SELECT DISTINCT borough FROM boroughs;"
-         + "SELECT borough FROM boroughs ORDER BY id ASC");
+         + "SELECT id, borough FROM boroughs ORDER BY id ASC");
         var boroughs = boroughQuery[0].values.map(function(d){return d[0]});
-        var values = boroughQuery[1].values.map(function(d){return boroughs.indexOf(d[0])});
-        var palette = d3.scale.category20();
-        this.caption = function(i){return boroughs[values[i]]};
-        this.colour = function(i){return palette(values[i]%20)};
+        //var values = boroughQuery[1].values.map(function(d){return boroughs.indexOf(d[0])});
+		var map = {};
+		boroughQuery[1].values.forEach(function(b){map[b[0]] = boroughs.indexOf(b[1])});
+        var palette = d3.scaleOrdinal(d3.schemeCategory20);
+        this.caption = function(i){
+			return map[i]
+		};
+        this.colour = function(d){
+			return palette(map[d.id]%20)
+		};
         this.key = [];
         return this;
       }
