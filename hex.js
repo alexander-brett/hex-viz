@@ -1,12 +1,5 @@
 var size = 720;
 
-function Node(data, projection){
-  var desiredLocation = projection([data.long, data.lat]);
-  data.x = desiredLocation[0];
-  data.y = desiredLocation[1];
-  return data;
-}
-
 function startForce(dataSource){
 
   var grid = new HexGrid(size, dataSource.Data.length);
@@ -16,32 +9,16 @@ function startForce(dataSource){
     .attr('width', size)
     .attr('height', size);
 
-    var projection = d3.geoMercator()
-      .scale(65*size)
-      .center([dataSource.Centre.long, dataSource.Centre.lat])
-      .translate([size/2,size/2]);
+      var colourGenerator = dataSource.Options.Colours("Borough");
 
-    var data = dataSource.Data.map(function(d){return Node(d, projection)});
-
-  function updateFakes(fakeNodes){
-    fakeNodes.attr('transform', function(d){
+  var fakeNodes = svg.selectAll('.fakeNode').data(dataSource.Data)
+    .enter().append('polygon')
+    .attr('points', '1,0 0.5,0.866 -0.5,0.866 -1,0 -0.5,-0.866 0.5,-0.866')
+    .style('fill', 'rgba(0,0,0,0.2)').attr('transform', function(d){
       var nearest = grid.occupyNearest(d);
       d.fakeLocation = nearest;
       return 'translate('+nearest.x+','+nearest.y+') scale('+10+') rotate(30) ';
-    });
-    svg.selectAll('.link')
-  }
-
-  var fakeNodes = svg.selectAll('.fakeNode').data(data)
-    .enter().append('polygon')
-    .attr('points', '1,0 0.5,0.866 -0.5,0.866 -1,0 -0.5,-0.866 0.5,-0.866')
-    .style('fill', 'rgba(0,0,0,0.2)');
-
-    var now = Date.now();
-  updateFakes(fakeNodes);
-    console.log("drew in " + (Date.now() - now));
-    var colourGenerator = dataSource.Options.Colours("Borough");
-    fakeNodes.style('fill', function(d){
+    }).style('fill', function(d){
       return colourGenerator.colour(d);
     });
 };
@@ -67,7 +44,12 @@ function LondonDataSource(){
   var _self = this;
   var _db;
   this.Centre = {long: -0.09, lat: 51.48};
-  this.NumberOfElements = function(){};
+  var _projection = d3.geoMercator()
+        .scale(65*size)
+        .center([_self.Centre.long, _self.Centre.lat])
+        .translate([size/2,size/2]);
+
+  this.NumberOfElements = function(){return _self.Data.length;};
   this.Init = function(){
     return loadUrl('data.db')
       .then(loadDatabase)
@@ -84,14 +66,16 @@ function LondonDataSource(){
           , {$lat: _self.Centre.lat, $long: _self.Centre.long}
         );
         while(statement.step()){
-          _self.Data.push(statement.getAsObject());
+          var item = statement.getAsObject();
+          [item.x,item.y] = _projection([item.long, item.lat]);
+          _self.Data.push(item);
         }
         return _self;
       });
   };
   this.Options = function(){};
   this.Data = [];
-  return this;
+  return this.Init();
 }
 
-new LondonDataSource().Init().then(startForce);
+new LondonDataSource().then(startForce);
