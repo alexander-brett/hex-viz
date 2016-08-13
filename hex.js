@@ -1,7 +1,4 @@
-//var sideLength = 20;
-var gridSpacing = 20;
-
-var size = 700;
+var size = 720;
 
 function Node(data, projection){
   var desiredLocation = projection([data.long, data.lat]);
@@ -10,10 +7,9 @@ function Node(data, projection){
   return data;
 }
 
-
 function startForce(dataSource){
 
-  var grid = HexGrid(gridSpacing, dataSource.Data.length);
+  var grid = new HexGrid(size, dataSource.Data.length);
 
   var svg = d3.select('#hex')
     .append('svg')
@@ -21,9 +17,9 @@ function startForce(dataSource){
     .attr('height', size);
 
     var projection = d3.geoMercator()
-      .scale(grid.sideLength*2200)
+      .scale(65*size)
       .center([dataSource.Centre.long, dataSource.Centre.lat])
-      .translate([grid.origin.x,grid.origin.y]);
+      .translate([size/2,size/2]);
 
     var data = dataSource.Data.map(function(d){return Node(d, projection)});
 
@@ -31,7 +27,7 @@ function startForce(dataSource){
     fakeNodes.attr('transform', function(d){
       var nearest = grid.occupyNearest(d);
       d.fakeLocation = nearest;
-      return 'translate('+nearest.x+','+nearest.y+') scale('+gridSpacing/2+') rotate(30) ';
+      return 'translate('+nearest.x+','+nearest.y+') scale('+10+') rotate(30) ';
     });
     svg.selectAll('.link')
   }
@@ -43,7 +39,7 @@ function startForce(dataSource){
   updateFakes(fakeNodes);
 
     var colourGenerator = dataSource.Options.Colours("Borough");
-    fakeNodes.style('fill', function(d,i){
+    fakeNodes.style('fill', function(d){
       return colourGenerator.colour(d);
     });
 };
@@ -74,7 +70,7 @@ function LondonDataSource(){
     return loadUrl('data.db')
       .then(loadDatabase)
       .then(function(db){
-        _self.Options = LondonOptions(db);
+        _self.Options = new LondonOptions(db);
         var statement = db.prepare(
           "SELECT * from boroughs " +
           "JOIN locations ON boroughs.id = locations.id " +
