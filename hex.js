@@ -36,8 +36,10 @@ function startForce(dataSource){
     .enter().append('polygon')
     .attr('points', '1,0 0.5,0.866 -0.5,0.866 -1,0 -0.5,-0.866 0.5,-0.866')
     .style('fill', 'rgba(0,0,0,0.2)');
-  updateFakes(fakeNodes);
 
+    var now = Date.now();
+  updateFakes(fakeNodes);
+    console.log("drew in " + (Date.now() - now));
     var colourGenerator = dataSource.Options.Colours("Borough");
     fakeNodes.style('fill', function(d){
       return colourGenerator.colour(d);
