@@ -1,4 +1,4 @@
-function Options(database){
+function LondonOptions(database){
     function radiusFromProperty(table, column, label, size){
       return function(db){
         var query = db.exec(
@@ -69,20 +69,15 @@ function Options(database){
 
     var colourFromBorough = function(){
       return function(db){
-        var boroughQuery = db.exec(
-          "SELECT DISTINCT borough FROM boroughs;"
-         + "SELECT id, borough FROM boroughs ORDER BY id ASC");
+        var boroughQuery = db.exec("SELECT DISTINCT borough FROM boroughs;");
         var boroughs = boroughQuery[0].values.map(function(d){return d[0]});
-        //var values = boroughQuery[1].values.map(function(d){return boroughs.indexOf(d[0])});
-		var map = {};
-		boroughQuery[1].values.forEach(function(b){map[b[0]] = boroughs.indexOf(b[1])});
         var palette = d3.scaleOrdinal(d3.schemeCategory20);
-        this.caption = function(i){
-			return map[i]
-		};
+        this.caption = function(d){
+    			return d.borough;
+    		};
         this.colour = function(d){
-			return palette(map[d.id]%20)
-		};
+    			return palette(boroughs.indexOf(d.borough)%20)
+    		};
         this.key = [];
         return this;
       }
@@ -177,7 +172,7 @@ function Options(database){
       }
     }
 
-    this.Colours = {
+    var _colours = {
       "Borough": colourFromBorough(),
       "Proportion of social rented housing": colourWithYears(
         'housing',
@@ -189,6 +184,10 @@ function Options(database){
       "Mayoral election 2016 percentage turnout": colourFromGenericPercent('voting', 'percent_turnout'),
       "Population density (with projections)": colourWithYears('population_density', 'density', 4, database)
     };
+
+    this.Colours = function(name){
+      return _colours[name](database);
+    }
 
     return this;
 }

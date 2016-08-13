@@ -86,6 +86,7 @@ function HexGrid(spacing, numberOfElements){
     if (p.x === origin.x ) return (p.y < 0 ? -1 : 1 )*Math.PI/2;
     return (p.x-origin.x<0 ? Math.PI : 0 ) + Math.atan((p.y-origin.y)/(p.x - origin.x))
   };
+  // Not actually a norm.
   this.norm = function(a, b){
     var dr = Math.abs(sqdist(origin, a) + sqdist(origin,b))/origin.x;
     var dtheta = theta(a) - theta(b);
@@ -96,6 +97,7 @@ function HexGrid(spacing, numberOfElements){
     if (effectivedtheta > Math.PI/2) return 999999;
     return Math.pow(dr, 1)*Math.pow(effectivedtheta, 0.6)*Math.pow(sqdist(a,b)/origin.x,0.7);//*Math.pow(sqdist(origin,a)/origin.x, 0.6);
   };
+  // A list of indices which are the current boundary.
   var boundary = new Set();
   boundary.add(0);
   this.occupyNearest = function(p) {
