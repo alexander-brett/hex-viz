@@ -65,6 +65,7 @@ function sqdist(a, b) {
 };
 
 function HexGrid(size, numberOfElements){
+  var _self = this;
 
   var origin = {x: size/2, y: size/2};
 
@@ -73,7 +74,7 @@ function HexGrid(size, numberOfElements){
     sideLength++;
   }
 
-  var gridSpacing = size / (2*sideLength-1);
+  this.gridSpacing = size / (2*sideLength-1);
 
   var cells = [{x:origin.x, y:origin.y, i:0, neighbours: [1,2,3,4,5,6]}];
   // populate the grid
@@ -81,8 +82,8 @@ function HexGrid(size, numberOfElements){
     for (var t = 0; t < 6; t++){
       for (var k = 0; k < r; k++){
         cells.push({
-          x: origin.x + gridSpacing*(r*Math.cos(-t*Math.PI/3) + k * Math.cos((t+2)*Math.PI/3)),
-          y: origin.y + gridSpacing*(r*Math.sin(t*Math.PI/3) + k * Math.sin((t+2)*Math.PI/3)),
+          x: origin.x + this.gridSpacing*(r*Math.cos(-t*Math.PI/3) + k * Math.cos((t+2)*Math.PI/3)),
+          y: origin.y + this.gridSpacing*(r*Math.sin(t*Math.PI/3) + k * Math.sin((t+2)*Math.PI/3)),
           i: cells.length,
           neighbours: getAdjacent(r, t, k)
         });
@@ -112,7 +113,7 @@ function HexGrid(size, numberOfElements){
     var minDist = 1000000;
     var candidate = null;
     boundary.forEach(function(b){
-      var d = norm(p, cells[b]);
+      var d = norm({x:size*p.x,y:size*p.y}, cells[b]);
       if(d < minDist) {
           minDist = d;
           candidate = b;
@@ -125,7 +126,22 @@ function HexGrid(size, numberOfElements){
     result.neighbours.filter(function(b){
         return !boundary.has(b) && b < cells.length && cells[b].occupied != true
       }).forEach(function(b){boundary.add(b); });
-    return result;
-  }
+
+    p.screenX = result.x;
+    p.screenY = result.y;
+  };
+
+  this.assign = function(data){
+    data.forEach(function(d){
+      _self.occupyNearest(d);
+    })
+  };
+/*
+  this.occupyContiguous = function(data){
+    var firstDatum =;
+    var regionBoundary = new Set();
+    regionBoundary =;
+  };
+*/
   return this;
 };

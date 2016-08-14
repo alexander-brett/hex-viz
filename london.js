@@ -191,3 +191,44 @@ function LondonOptions(database){
 
     return this;
 }
+
+
+function LondonDataSource(){
+  var _self = this;
+  var _db;
+  this.Centre = {long: -0.09, lat: 51.48};
+  var _projection = d3.geoMercator()
+        .scale(65)
+        .center([_self.Centre.long, _self.Centre.lat])
+        .translate([1/2,1/2]);
+
+  this.NumberOfElements = function(){return _self.Data.length;};
+  this.Init = function(){
+    return loadUrl('data.db')
+      .then(loadDatabase)
+      .then(function(db){
+        _self.Options = new LondonOptions(db);
+        _self.InitialColours = _self.Options.Colours("Borough");
+        var statement = db.prepare(
+          "SELECT * from boroughs " +
+          "JOIN locations ON boroughs.id = locations.id " +
+          "ORDER BY "+
+          "(locations.lat-($lat))*(locations.lat-($lat))"
+          +"+(locations.long-($long))*(locations.long-($long))"
+          +" ASC "
+          //+ "LIMIT 50"
+          , {$lat: _self.Centre.lat, $long: _self.Centre.long}
+        );
+        while(statement.step()){
+          var item = statement.getAsObject();
+          [item.x,item.y] = _projection([item.long, item.lat]);
+          _self.Data.push(item);
+        }
+        return _self;
+      });
+  };
+  this.Options = function(){};
+  this.Data = [];
+  this.InitialColours = {};
+  return this.Init();
+}
